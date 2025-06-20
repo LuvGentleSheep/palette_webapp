@@ -48,5 +48,10 @@ if uploaded_file is not None:
             file_name=palette_name,
             mime="image/png",
         )
-    except Exception as e:
-        st.error(f"生成失败：{e}")
+    except subprocess.CalledProcessError as e:
+        st.error(
+            f"生成失败：{e}\n\n"
+            f"命令: {e.cmd}\n"
+            f"STDOUT:\n{e.stdout}\n"
+            f"STDERR:\n{e.stderr}"
+        )
