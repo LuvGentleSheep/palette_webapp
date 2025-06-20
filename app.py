@@ -72,7 +72,7 @@ def make_palette_image(img, bg_color, origin_name):
 # ==== Streamlit 页面 ====
 st.set_page_config(page_title="主色卡生成工具", layout="centered")
 st.title("主色卡生成工具")
-st.write("上传图片，将自动裁切为正方形，并拼接主色卡。")
+st.write("上传图片，将自动生成主色卡。")
 
 uploaded_file = st.file_uploader("上传图片", type=["png", "jpg", "jpeg"])
 color_options = {
@@ -92,7 +92,7 @@ if uploaded_file is not None:
             img_bytes = f.read()
         st.success("生成成功！可点击下方按钮下载。")
         st.download_button(
-            label="下载/分享此图片",
+            label="下载图片",
             data=img_bytes,
             file_name=palette_name,
             mime="image/png",
