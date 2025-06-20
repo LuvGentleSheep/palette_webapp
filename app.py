@@ -70,9 +70,9 @@ def make_palette_image(img, bg_color, origin_name):
     return out_path, palette_name
 
 # ==== Streamlit 页面 ====
-st.set_page_config(page_title="主色卡生成工具", layout="centered")
-st.title("主色卡生成工具")
-st.write("上传图片，将自动生成主色卡。")
+st.set_page_config(page_title="图片色板生成工具", layout="centered")
+st.title("图片色板生成工具")
+st.write("上传图片，将自动生成色板。")
 
 uploaded_file = st.file_uploader("上传图片", type=["png", "jpg", "jpeg"])
 color_options = {
@@ -87,7 +87,7 @@ if uploaded_file is not None:
         origin_name = os.path.splitext(uploaded_file.name)[0]
         img = Image.open(uploaded_file)
         out_path, palette_name = make_palette_image(img, bg_color, origin_name)
-        st.image(out_path, caption="主色卡拼接图", use_container_width=True)
+        st.image(out_path, caption="色板拼接图", use_container_width=True)
         with open(out_path, "rb") as f:
             img_bytes = f.read()
         st.success("生成成功！可点击下方按钮下载。")
