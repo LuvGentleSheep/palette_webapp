@@ -85,6 +85,7 @@ def make_palette_image(img, bg_color, origin_name, num_colors=5, wide_palette=Fa
 
 # ==== Streamlit 页面 ====
 st.set_page_config(page_title="图片色板生成工具", layout="centered")
+st.image("banner.jpeg", use_container_width=True)
 st.title("图片色板生成工具")
 st.write("上传图片，将自动生成色板。")
 
