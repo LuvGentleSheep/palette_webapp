@@ -28,19 +28,17 @@ def center_crop_to_square(img):
     bottom = top + short_side
     return img.crop((left, top, right, bottom))
 
-def make_palette_image(img, bg_color, origin_name, num_colors=5, wide_palette=False):
+def make_palette_image(img, bg_color, origin_name, num_colors=5, wide_palette=False, shape="方形"):
     img = center_crop_to_square(img)
     w, h = img.size
-
+    
     # 主色提取
     if num_colors == 5 and wide_palette:
-        # “宽”模式：10色聚类，取第2/4/6/8/10色
         all_colors = extract_colors(img, 10)
-        palette = [all_colors[i] for i in [0,2,4,7,9]]
+        palette = [all_colors[i] for i in [0, 2, 4, 7, 9]]
     else:
         palette = extract_colors(img, num_colors)
-
-    # 色块排列逻辑
+        
     if num_colors == 5:
         n_per_row, n_rows = 5, 1
     elif num_colors == 8:
@@ -49,21 +47,19 @@ def make_palette_image(img, bg_color, origin_name, num_colors=5, wide_palette=Fa
         n_per_row, n_rows = 5, 2
     else:
         raise ValueError("只支持5、8、10色")
-
-    # 布局
+        
     border = max(24, w // 25)
     cell_gap = max(14, w // 30)
     gap = cell_gap
-
     cell_size = (w - (n_per_row - 1) * cell_gap) // n_per_row
-
+    
     palette_h = n_rows * cell_size + (n_rows - 1) * cell_gap
     new_w = w + 2 * border
     new_h = h + gap + palette_h + 2 * border
-
+    
     new_img = Image.new('RGB', (new_w, new_h), bg_color)
     new_img.paste(img, (border, border))
-
+    
     draw = ImageDraw.Draw(new_img)
     idx = 0
     for row in range(n_rows):
@@ -75,9 +71,12 @@ def make_palette_image(img, bg_color, origin_name, num_colors=5, wide_palette=Fa
             if idx >= len(palette):
                 break
             x = start_x + i * (cell_size + cell_gap)
-            draw.rectangle([x, y, x + cell_size, y + cell_size], fill=palette[idx])
+            if shape == "圆形":
+                draw.ellipse([x, y, x + cell_size, y + cell_size], fill=palette[idx])
+            else:
+                draw.rectangle([x, y, x + cell_size, y + cell_size], fill=palette[idx])
             idx += 1
-
+            
     palette_name = origin_name + "_palette.png"
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as out_tmp:
         out_path = out_tmp.name
@@ -106,6 +105,9 @@ color_options = {
     "白色": "#F5F5F5",
     "黑色": "#1C1C1C"
 }
+
+shape = st.radio("色块形状", ["方形", "圆形"], index=0, horizontal=True)
+
 color_label = st.radio("选择边框色", list(color_options.keys()), index=0, horizontal=True)
 bg_color = hex_to_rgb(color_options[color_label])
 
@@ -115,7 +117,7 @@ if uploaded_file is not None:
         img = Image.open(uploaded_file)
         with st.spinner("正在生成色板，请稍候……"):
             out_path, palette_name = make_palette_image(
-                img, bg_color, origin_name, num_colors=num_colors, wide_palette=wide_palette
+                img, bg_color, origin_name, num_colors=num_colors, wide_palette=wide_palette, shape=shape
             )
             # 图片生成期间会有加载动画
         st.image(out_path, caption="色板拼接图", use_container_width=True)
