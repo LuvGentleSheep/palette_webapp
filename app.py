@@ -28,41 +28,56 @@ def center_crop_to_square(img):
     bottom = top + short_side
     return img.crop((left, top, right, bottom))
 
-def make_palette_image(img, bg_color, origin_name):
+def make_palette_image(img, bg_color, origin_name, num_colors=5, wide_palette=False):
     img = center_crop_to_square(img)
-    w, h = img.size  # 现在w==h
+    w, h = img.size
 
-    palette = extract_colors(img, 5)
+    # 主色提取
+    if num_colors == 5 and wide_palette:
+        # “宽”模式：10色聚类，取第2/4/6/8/10色
+        all_colors = extract_colors(img, 10)
+        palette = [all_colors[i] for i in [0,2,4,7,9]]
+    else:
+        palette = extract_colors(img, num_colors)
 
-    # 动态参数，保持相对比例
-    cell_size = max(40, w // 6)
-    gap = cell_size // 6
-    cell_gap = cell_size // 6
-    border = cell_size // 5
+    # 色块排列逻辑
+    if num_colors == 5:
+        n_per_row, n_rows = 5, 1
+    elif num_colors == 8:
+        n_per_row, n_rows = 4, 2
+    elif num_colors == 10:
+        n_per_row, n_rows = 5, 2
+    else:
+        raise ValueError("只支持5、8、10色")
 
-    # 色卡总宽度等于图片宽度
-    # 色卡总宽度 = 色卡数*cell_size + (色卡数-1)*cell_gap，应等于图片宽度
-    cell_gap_calc = (w - 5*cell_size) // 4 if 5*cell_size < w else cell_gap
-    cell_gap = max(cell_gap_calc, 4)  # 保底4像素
+    # 布局
+    border = max(24, w // 25)
+    cell_gap = max(14, w // 30)
+    gap = cell_gap
 
-    palette_total_h = cell_size
-    new_w = w + 2*border
-    new_h = h + gap + palette_total_h + 2*border
+    cell_size = (w - (n_per_row - 1) * cell_gap) // n_per_row
+
+    palette_h = n_rows * cell_size + (n_rows - 1) * cell_gap
+    new_w = w + 2 * border
+    new_h = h + gap + palette_h + 2 * border
 
     new_img = Image.new('RGB', (new_w, new_h), bg_color)
-
-    # 粘贴图片（水平居中，上方边框）
     new_img.paste(img, (border, border))
 
-    # 画色卡（正好与图片两侧齐平）
-    start_x = border
-    y = border + h + gap
     draw = ImageDraw.Draw(new_img)
-    for i, color in enumerate(palette):
-        x = start_x + i * (cell_size + cell_gap)
-        draw.rectangle([x, y, x + cell_size, y + cell_size], fill=color)
+    idx = 0
+    for row in range(n_rows):
+        n_this_row = n_per_row
+        row_palette_w = n_per_row * cell_size + (n_per_row - 1) * cell_gap
+        start_x = border
+        y = border + h + gap + row * (cell_size + cell_gap)
+        for i in range(n_this_row):
+            if idx >= len(palette):
+                break
+            x = start_x + i * (cell_size + cell_gap)
+            draw.rectangle([x, y, x + cell_size, y + cell_size], fill=palette[idx])
+            idx += 1
 
-    # 输出到临时文件
     palette_name = origin_name + "_palette.png"
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as out_tmp:
         out_path = out_tmp.name
@@ -75,18 +90,34 @@ st.title("图片色板生成工具")
 st.write("上传图片，将自动生成色板。")
 
 uploaded_file = st.file_uploader("上传图片", type=["png", "jpg", "jpeg"])
+
+num_colors = st.radio("取色数量", options=[5, 10], index=0, horizontal=True)
+#num_colors = st.radio("主色数量", options=[5, 8, 10], index=0, horizontal=True)
+
+wide_palette = False
+# 只有五色时增加宽/窄选项
+if num_colors == 5:
+    col1, col2 = st.columns([1,1])
+    with col1:
+        pick_mode = st.radio("取色范围", ["窄", "宽"], index=0, horizontal=True)
+    wide_palette = (pick_mode == "宽")
+
 color_options = {
     "白色": "#F5F5F5",
     "黑色": "#1C1C1C"
 }
-color_label = st.radio("选择边框色", list(color_options.keys()), index=0)
+color_label = st.radio("选择边框色", list(color_options.keys()), index=0, horizontal=True)
 bg_color = hex_to_rgb(color_options[color_label])
 
 if uploaded_file is not None:
     try:
         origin_name = os.path.splitext(uploaded_file.name)[0]
         img = Image.open(uploaded_file)
-        out_path, palette_name = make_palette_image(img, bg_color, origin_name)
+        with st.spinner("正在生成色板，请稍候……"):
+            out_path, palette_name = make_palette_image(
+                img, bg_color, origin_name, num_colors=num_colors, wide_palette=wide_palette
+            )
+            # 图片生成期间会有加载动画
         st.image(out_path, caption="色板拼接图", use_container_width=True)
         with open(out_path, "rb") as f:
             img_bytes = f.read()
