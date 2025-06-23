@@ -147,57 +147,63 @@ if st.session_state.get("wallpaper_start"):
     st.header("制作壁纸")
     
     col_wpsettings, col_wpresult = st.columns([2, 3])
-    with col_wpsettings:
-    # 1. 桌面/手机
-        client_type = st.radio("壁纸用途", ["桌面", "手机"], horizontal=True)
-        if client_type == "桌面":
-            ratio = (16, 9)
-        else:
-            ratio = (9, 19.5)
-        # 2. 色卡选择
-        palette_hex = ['#%02x%02x%02x' % c for c in palette]
-        n_colors = len(palette_hex)
-        bar_height = 36
+#with col_wpsettings:
+# 1. 桌面/手机
+    client_type = st.radio("壁纸用途", ["桌面", "手机"], horizontal=True)
+    if client_type == "桌面":
+        ratio = (16, 9)
+    else:
+        ratio = (9, 19.5)
+    # 2. 色卡选择
+    palette_hex = ['#%02x%02x%02x' % c for c in palette]
+    n_colors = len(palette_hex)
+    bar_height = 36
+    
+    
+    # 标题
+    st.markdown("<div style='font-size:1.3em;font-weight:bold;margin:8px 0 6px 0;'>选择填充色</div>", unsafe_allow_html=True)
+    
+    # 1. SVG色带
+    rects = []
+    for i, color in enumerate(palette_hex):
+        w = 100 / n_colors
+        x = i * w
+        rects.append(f"<rect x='{x}' y='0' width='{w}' height='{bar_height}' fill='{color}'/>")
+    svg_code = f"""
+    <div style='width:100%;max-width:700px;margin:18px auto 10px auto;'>
+    <svg width='100%' height='{bar_height}' viewBox='0 0 100 {bar_height}' style='display:block;border-radius:13px;overflow:hidden;border:2px solid #444;' preserveAspectRatio="none">
+        {''.join(rects)}
+    </svg>
+    </div>
+    """
+    st.markdown(svg_code, unsafe_allow_html=True)
+    
+    # 2. 滑块
+    if num_colors == 5:
+        col_left, col_center, col_right = st.columns([1, 8, 1])
+    else:  # num_colors == 10
+        col_left, col_center, col_right = st.columns([1, 18, 1])
         
-        
-        # 标题
-        st.markdown("<div style='font-size:1.3em;font-weight:bold;margin:8px 0 6px 0;'>选择填充色</div>", unsafe_allow_html=True)
-        
-        # 1. SVG色带
-        rects = []
-        for i, color in enumerate(palette_hex):
-            w = 100 / n_colors
-            x = i * w
-            rects.append(f"<rect x='{x}' y='0' width='{w}' height='{bar_height}' fill='{color}'/>")
-        svg_code = f"""
-        <div style='width:100%;max-width:700px;margin:18px auto 10px auto;'>
-        <svg width='100%' height='{bar_height}' viewBox='0 0 100 {bar_height}' style='display:block;border-radius:13px;overflow:hidden;border:2px solid #444;' preserveAspectRatio="none">
-            {''.join(rects)}
-        </svg>
-        </div>
-        """
-        st.markdown(svg_code, unsafe_allow_html=True)
-        
-        # 2. 滑块
+    with col_center:
         color_idx = st.slider(
             "",  # 无label
             min_value=1, max_value=n_colors, value=1, label_visibility="collapsed"
         ) - 1
-        
-        # 3. 大色块预览
-        sel_color = palette[color_idx]
-        preview_code = f"""
-        <div style='width:100%;max-width:700px;height:48px;
-            background:{palette_hex[color_idx]};
-            border-radius:13px;border:3px solid #444;margin:0px auto 0 auto;'>
-        </div>
-        """
-        st.markdown(preview_code, unsafe_allow_html=True)
-        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        
-        if st.button("生成壁纸图片", key="wall_generate"):
-            # 设置session状态，触发右侧显示
-            st.session_state["wallpaper_generated"] = True
+    
+    # 3. 大色块预览
+    sel_color = palette[color_idx]
+    preview_code = f"""
+    <div style='width:100%;max-width:700px;height:48px;
+        background:{palette_hex[color_idx]};
+        border-radius:13px;border:3px solid #444;margin:0px auto 0 auto;'>
+    </div>
+    """
+#   st.markdown(preview_code, unsafe_allow_html=True)
+#   st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+    
+    if st.button("生成壁纸图片", key="wall_generate"):
+        # 设置session状态，触发右侧显示
+        st.session_state["wallpaper_generated"] = True
             
     # 3. 生成壁纸，边框宽度和分辨率自动（按色板图大小扩展、绝不压缩）
     palette_w, palette_h = palette_img.size
@@ -217,24 +223,24 @@ if st.session_state.get("wallpaper_start"):
     wallpaper_img = pad_to_ratio(img_to_use, ratio=ratio, color=sel_color)
     # 不再resize（保持最高质量和最初分辨率）
     
-    with col_wpresult: 
-        if st.session_state.get("wallpaper_generated"):
-            with st.spinner("正在生成壁纸，请稍候……"):
-                st.image(wallpaper_img, caption="壁纸预览", use_container_width=True)
-                tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-                wallpaper_img.save(tmp.name)
-                
-                # 获取原图名
-                origin_name = os.path.splitext(uploaded_file.name)[0]
-                # 判断横竖
-                w, h = wallpaper_img.size
-                orientation = "landscape" if w >= h else "portrait"
-                # 拼接文件名
-                wallpaper_file_name = f"{origin_name}_palette_{orientation}.png"
-                
-                st.download_button(
-                    "下载壁纸",
-                    data=open(tmp.name, "rb"),
-                    file_name=wallpaper_file_name,
-                    mime="image/png"
-                )
+#with col_wpresult: 
+    if st.session_state.get("wallpaper_generated"):
+        with st.spinner("正在生成壁纸，请稍候……"):
+            st.image(wallpaper_img, caption="壁纸预览", use_container_width=True)
+            tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+            wallpaper_img.save(tmp.name)
+            
+            # 获取原图名
+            origin_name = os.path.splitext(uploaded_file.name)[0]
+            # 判断横竖
+            w, h = wallpaper_img.size
+            orientation = "landscape" if w >= h else "portrait"
+            # 拼接文件名
+            wallpaper_file_name = f"{origin_name}_palette_{orientation}.png"
+            
+            st.download_button(
+                "下载壁纸",
+                data=open(tmp.name, "rb"),
+                file_name=wallpaper_file_name,
+                mime="image/png"
+            )
