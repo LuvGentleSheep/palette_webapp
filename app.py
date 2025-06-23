@@ -146,7 +146,7 @@ with col_result:
 if st.session_state.get("wallpaper_start"):
     st.header("制作壁纸")
     
-    col_wpsettings, col_wpresult = st.columns([1, 2])
+    col_wpsettings, col_wpresult = st.columns([2, 3])
     with col_wpsettings:
     # 1. 桌面/手机
         client_type = st.radio("壁纸用途", ["桌面", "手机"], horizontal=True)
@@ -211,7 +211,7 @@ if st.session_state.get("wallpaper_start"):
         wall_h = palette_h
         wall_w = int(palette_h * ratio[0] / ratio[1])
         
-    border_width = min(wall_w, wall_h) // 3
+    border_width = min(wall_w, wall_h) // 4
     img_to_use = palette_img
     img_to_use = add_border(img_to_use, border=border_width, color=sel_color)
     wallpaper_img = pad_to_ratio(img_to_use, ratio=ratio, color=sel_color)
